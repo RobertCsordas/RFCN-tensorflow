@@ -19,7 +19,7 @@ from BoxEngine.RPN import RPN
 import tensorflow as tf
 
 class BoxNetwork:
-	def __init__(self, nCategories, rpnLayer, rpnDownscale, rpnOffset, featureLayer=None, featureDownsample=None, featureOffset=None, weightDecay=1e-6):
+	def __init__(self, nCategories, rpnLayer, rpnDownscale, rpnOffset, featureLayer=None, featureDownsample=None, featureOffset=None, weightDecay=1e-6, hardMining=True):
 		if featureLayer is None:
 			featureLayer=rpnLayer
 
@@ -31,7 +31,7 @@ class BoxNetwork:
 
 		with tf.name_scope("BoxNetwork"):
 			self.rpn = RPN(rpnLayer, immediateSize=512, weightDecay=weightDecay, inputDownscale=rpnDownscale, offset=rpnOffset)
-			self.boxRefiner = BoxRefinementNetwork(featureLayer, nCategories, downsample=featureDownsample, offset=featureOffset)
+			self.boxRefiner = BoxRefinementNetwork(featureLayer, nCategories, downsample=featureDownsample, offset=featureOffset, hardMining=hardMining)
 
 			self.proposals, self.proposalScores = self.rpn.getPositiveOutputs(maxOutSize=300)
 

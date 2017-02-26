@@ -17,17 +17,10 @@
 # ==============================================================================
 
 
-import tensorflow as tf
-from tensorflow.python.ops import control_flow_ops
-from Dataset.CocoDataset import *
-from Utils.RunManager import *
-from Utils.CheckpointLoader import *
+
 from Utils.ArgSave import *
 import sys
-from BoxInceptionResnet import *
-from Dataset import Augment
-from Visualize import VisualizeOutput
-from Utils import Model
+import os
 
 parser = StorableArgparse(description='Kaggle fish trainer.')
 parser.add_argument('-learningRate', type=float, default=0.0001, help='Learning rate')
@@ -41,6 +34,8 @@ parser.add_argument('-optimizer', type=str, default='adam', help='sgd/adam/rmspr
 parser.add_argument('-resume', type=str, help='Resume from this file', save=False)
 parser.add_argument('-report', type=str, default="", help='Create report here', save=False)
 parser.add_argument('-trainFrom', type=str, default="-1", help='Train from this layer. Use 0 for all, -1 for just the added layers')
+parser.add_argument('-hardMining', type=int, default=1, help="Enable hard example mining.")
+parser.add_argument('-gpu', type=str, default="0", help='Train on this GPU(s)')
 
 opt=parser.parse_args()
 
@@ -49,9 +44,6 @@ if not os.path.isdir(opt.name):
 
 opt = parser.load(opt.name+"/args.json")
 parser.save(opt.name+"/args.json")
-
-globalStep = tf.Variable(0, name='globalStep', trainable=False)
-globalStepInc=tf.assign_add(globalStep,1)
 
 if not os.path.isdir(opt.name+"/log"):
 	os.makedirs(opt.name+"/log")
@@ -62,7 +54,22 @@ if not os.path.isdir(opt.name+"/save"):
 if not os.path.isdir(opt.name+"/preview"):
 	os.makedirs(opt.name+"/preview")
 
-#dataset = KaggleFishLoader(opt.dataset, randZoom=opt.randZoom==1)
+
+os.environ["CUDA_VISIBLE_DEVICES"] = opt.gpu
+
+import tensorflow as tf
+from tensorflow.python.ops import control_flow_ops
+from Dataset.CocoDataset import *
+from Utils.RunManager import *
+from Utils.CheckpointLoader import *
+from BoxInceptionResnet import *
+from Dataset import Augment
+from Visualize import VisualizeOutput
+from Utils import Model
+
+
+globalStep = tf.Variable(0, name='globalStep', trainable=False)
+globalStepInc=tf.assign_add(globalStep,1)
 
 Model.download()
 
@@ -76,7 +83,7 @@ images, boxes, classes = Augment.augment(*dataset.get())
 print("Number of categories: "+str(dataset.categoryCount()))
 
 
-net = BoxInceptionResnet(images, dataset.categoryCount(), name="boxnet", trainFrom=opt.trainFrom)
+net = BoxInceptionResnet(images, dataset.categoryCount(), name="boxnet", trainFrom=opt.trainFrom, hardMining=opt.hardMining==1)
 
 loss = net.getLoss(boxes, classes)
 slim.losses.add_loss(loss)

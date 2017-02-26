@@ -24,7 +24,7 @@ from BoxEngine.BoxNetwork import BoxNetwork
 
 
 class BoxInceptionResnet(BoxNetwork):
-	def __init__(self, inputs, nCategories, name="BoxNetwork", weightDecay=0.00004, reuse=False, isTraining=True, trainFrom=None):
+	def __init__(self, inputs, nCategories, name="BoxNetwork", weightDecay=0.00004, reuse=False, isTraining=True, trainFrom=None, hardMining=True):
 		self.boxThreshold = 0.5
 
 		if trainFrom == "0":
@@ -43,7 +43,7 @@ class BoxInceptionResnet(BoxNetwork):
 				scale_16 = self.googleNet.getOutput("Mixed_6a")
 				scale_32 = self.googleNet.getOutput("PrePool")
 
-				BoxNetwork.__init__(self, nCategories, scale_16, 16, [16,16], scale_32, 32, [32,32], weightDecay=weightDecay)
+				BoxNetwork.__init__(self, nCategories, scale_16, 16, [16,16], scale_32, 32, [32,32], weightDecay=weightDecay, hardMining=hardMining)
 
 				# scale_32 = tf.image.resize_bilinear(scale_32, tf.shape(scale_16)[1:3])
 

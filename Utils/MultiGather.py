@@ -26,11 +26,12 @@ def gather(tensors, indices):
 def gatherTopK(t, k, others=[], sorted=False):
     res=[]
     with tf.name_scope("gather_top_k"):
-        values, indices = tf.nn.top_k(t, k=k, sorted=sorted)
+        isMoreThanK = tf.shape(t)[-1]>k
+        values, indices = tf.cond(isMoreThanK, lambda: tf.nn.top_k(t, k=k, sorted=sorted), lambda: tf.tuple([t, tf.zeros((0,1), tf.int32)]))
         indices = tf.reshape(indices, [-1,1])
         res.append(values)
 
         for o in others:
-            res.append(tf.gather_nd(o, indices))
+            res.append(tf.cond(isMoreThanK, lambda: tf.gather_nd(o, indices), lambda: o))
 
     return res

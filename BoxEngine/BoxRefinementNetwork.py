@@ -26,12 +26,14 @@ import BoxEngine.Loss as Loss
 class BoxRefinementNetwork:
 	POOL_SIZE=3
 
-	def __init__(self, input, nCategories, downsample=16, offset=[32,32]):
+	def __init__(self, input, nCategories, downsample=16, offset=[32,32], hardMining=True):
 		self.downsample = downsample
 		self.offset = offset
 		self.nCategories = nCategories
 		self.classMaps = slim.conv2d(input, (self.POOL_SIZE**2)*(1+nCategories), 3, activation_fn=None, scope='classMaps')
 		self.regressionMap = slim.conv2d(input, (self.POOL_SIZE**2)*4, 3, activation_fn=None, scope='regressionMaps')
+
+		self.hardMining=hardMining
 
 		#Magic parameters.
 		self.posIouTheshold = 0.5
@@ -57,7 +59,7 @@ class BoxRefinementNetwork:
 			netScores = self.getBoxScores(boxes)
 			refOnehot = tf.one_hot(refs, self.nCategories+1, on_value=1.0 - self.nCategories*self.falseValue, off_value=self.falseValue)
 		
-			return tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(netScores, refOnehot))
+			return tf.nn.softmax_cross_entropy_with_logits(netScores, refOnehot)
 
 	def refineBoxes(self, boxes):
 		with tf.name_scope("refineBoxes"):
@@ -78,11 +80,8 @@ class BoxRefinementNetwork:
 
 	def boxRefinementLoss(self, boxes, refBoxes):
 		with tf.name_scope("boxesRefinementLoss"):
-			def loss():
-				refinedBoxes, refSizes = self.refineBoxes(boxes)
-				return tf.reduce_mean(Loss.boxRegressionLoss(refinedBoxes, refBoxes, refSizes))
-
-			return tf.cond(tf.logical_and(tf.shape(boxes)[0]>0, tf.shape(refBoxes)[0]>0), lambda: loss(), lambda: tf.constant(0.0))
+			refinedBoxes, refSizes = self.refineBoxes(boxes)
+			return Loss.boxRegressionLoss(refinedBoxes, refBoxes, refSizes)
 
 	def loss(self, proposals, refBoxes, refClasses):
 		with tf.name_scope("BoxRefinementNetworkLoss"):
@@ -95,17 +94,19 @@ class BoxRefinementNetwork:
 					positiveClasses, positiveRefBoxes = MultiGather.gather([refClasses, refBoxes], positiveRefIndices)
 					positiveClasses = tf.cast(tf.cast(positiveClasses,tf.int8) + 1, tf.uint8)
 
-					selected = Utils.RandomSelect.randomSelectIndex(tf.shape(positiveBoxes)[0], nPositive)
-					positiveBoxes, positiveClasses, positiveRefBoxes = MultiGather.gather([positiveBoxes, positiveClasses, positiveRefBoxes], selected)
+					if not self.hardMining:
+						selected = Utils.RandomSelect.randomSelectIndex(tf.shape(positiveBoxes)[0], nPositive)
+						positiveBoxes, positiveClasses, positiveRefBoxes = MultiGather.gather([positiveBoxes, positiveClasses, positiveRefBoxes], selected)
 
 					return tf.tuple([self.classRefinementLoss(positiveBoxes, positiveClasses) + self.boxRefinementLoss(positiveBoxes, positiveRefBoxes), tf.shape(positiveBoxes)[0]])
 
 			def getNegLoss(negativeBoxes, nNegative):
 				with tf.name_scope("getNetLoss"):
-					negativeIndices = Utils.RandomSelect.randomSelectIndex(tf.shape(negativeBoxes)[0], nNegative)
-					negativeBoxes = tf.gather_nd(negativeBoxes, negativeIndices)
+					if not self.hardMining:
+						negativeIndices = Utils.RandomSelect.randomSelectIndex(tf.shape(negativeBoxes)[0], nNegative)
+						negativeBoxes = tf.gather_nd(negativeBoxes, negativeIndices)
 
-					return self.classRefinementLoss(negativeBoxes, tf.zeros(tf.shape(negativeIndices)[0:1], dtype=tf.uint8))
+					return self.classRefinementLoss(negativeBoxes, tf.zeros(tf.pack([tf.shape(negativeBoxes)[0],1]), dtype=tf.uint8))
 			
 			def getRefinementLoss():
 				with tf.name_scope("getRefinementLoss"):
@@ -130,11 +131,20 @@ class BoxRefinementNetwork:
 					nPositive = tf.shape(posBoxes)[0]
 					nNegative = tf.shape(negBoxes)[0]
 
+					if self.hardMining:
+						posLoss = tf.cond(nPositive > 0, lambda: getPosLoss(posBoxes, posRefIndices, 0)[0], lambda: tf.zeros((0,), tf.float32))
+						negLoss = tf.cond(nNegative > 0, lambda: getNegLoss(negBoxes, 0), lambda: tf.zeros((0,), tf.float32))
 
-					posLoss, posCount = tf.cond(nPositive > 0, lambda: getPosLoss(posBoxes, posRefIndices, self.nTrainPositives), lambda: tf.tuple([tf.constant(0.0), tf.constant(0,tf.int32)]))
-					negLoss = tf.cond(nNegative > 0, lambda: getNegLoss(negBoxes, self.nTrainBoxes-posCount), lambda: tf.constant(0.0))
+						allLoss = tf.concat(0,[posLoss, negLoss])
+						return tf.cond(tf.shape(allLoss)[0]>0, lambda: tf.reduce_mean(Utils.MultiGather.gatherTopK(allLoss, self.nTrainBoxes)), lambda: tf.constant(0.0))
+					else:
+						posLoss, posCount = tf.cond(nPositive > 0, lambda: getPosLoss(posBoxes, posRefIndices, self.nTrainPositives), lambda: tf.tuple([tf.constant(0.0), tf.constant(0,tf.int32)]))
+						negLoss = tf.cond(nNegative > 0, lambda: getNegLoss(negBoxes, self.nTrainBoxes-posCount), lambda: tf.constant(0.0))
+
+						nPositive = tf.cast(tf.shape(posLoss)[0], tf.float32)
+						nNegative = tf.cast(tf.shape(negLoss)[0], tf.float32)
 						
-					return posLoss + negLoss
+						return (tf.reduce_mean(posLoss)*nPositive + tf.reduce_mean(negLoss)*nNegative)/(nNegative+nPositive)
 	
 
 		return tf.cond(tf.logical_and(tf.shape(proposals)[0] > 0, tf.shape(refBoxes)[0] > 0), lambda: getRefinementLoss(), lambda:tf.constant(0.0))
