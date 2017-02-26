@@ -104,4 +104,4 @@ class BoxLoader:
 		return self.totalCount
 
 	def getCaptions(self, categories):
-		self.sources[0].getCaptions(categories)
+		return self.sources[0].getCaptions(categories)
