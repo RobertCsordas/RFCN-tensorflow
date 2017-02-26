@@ -36,6 +36,7 @@ parser.add_argument('-report', type=str, default="", help='Create report here', 
 parser.add_argument('-trainFrom', type=str, default="-1", help='Train from this layer. Use 0 for all, -1 for just the added layers')
 parser.add_argument('-hardMining', type=int, default=1, help="Enable hard example mining.")
 parser.add_argument('-gpu', type=str, default="0", help='Train on this GPU(s)')
+parser.add_argument('-mergeValidationSet', type=int, default=1, help='Merge validation set to training set.')
 
 opt=parser.parse_args()
 
@@ -60,6 +61,7 @@ os.environ["CUDA_VISIBLE_DEVICES"] = opt.gpu
 import tensorflow as tf
 from tensorflow.python.ops import control_flow_ops
 from Dataset.CocoDataset import *
+from Dataset.BoxLoader import *
 from Utils.RunManager import *
 from Utils.CheckpointLoader import *
 from BoxInceptionResnet import *
@@ -73,8 +75,10 @@ globalStepInc=tf.assign_add(globalStep,1)
 
 Model.download()
 
-dataset = CocoDataset(opt.dataset)
-
+dataset = BoxLoader()
+dataset.add(CocoDataset(opt.dataset))
+if opt.mergeValidationSet==1:
+	dataset.add(CocoDataset(opt.dataset, set="val"))
 
 
 images, boxes, classes = Augment.augment(*dataset.get())

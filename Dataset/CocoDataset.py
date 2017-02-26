@@ -19,31 +19,17 @@ import random
 import numpy as np
 import cv2
 import tensorflow as tf
-import threading
-import time
 
 class CocoDataset:
-	QUEUE_CAPACITY=16
-
-	def __init__(self, path, normalizeSize=True):
+	def __init__(self, path, set="train", normalizeSize=True):
 		print(path)
-		with tf.name_scope('dataset') as scope:
-			self.queue = tf.FIFOQueue(dtypes=[tf.float32, tf.float32, tf.uint8],
-					capacity=self.QUEUE_CAPACITY)
-
-			self.image = tf.placeholder(dtype=tf.float32, shape=[None, None, 3], name="image")
-			self.boxes = tf.placeholder(dtype=tf.float32, shape=[None,4], name="boxes")
-			self.classes = tf.placeholder(dtype=tf.uint8, shape=[None], name="classes")
-			
-			self.enqueueOp = self.queue.enqueue([self.image, self.boxes, self.classes])
-
 		self.path=path
 		self.coco=None
 		self.normalizeSize=normalizeSize
+		self.set=set
 
-
-	def initCoco(self):
-		self.coco=coco.COCO(self.path+"/annotations/instances_train2014.json")
+	def init(self):
+		self.coco=coco.COCO(self.path+"/annotations/instances_"+self.set+"2014.json")
 		self.images=self.coco.getImgIds()
 
 		self.toCocoCategory=[]
@@ -70,9 +56,6 @@ class CocoDataset:
 
 		return res
 
-	def categoryCount(self):
-		return 80
-
 	def load(self):
 		while True:
 			#imgId=self.images[1]
@@ -86,7 +69,7 @@ class CocoDataset:
 			if len(crowd)>0:
 				continue;
 
-			imgFile=self.path+"/train2014/"+self.coco.loadImgs(imgId)[0]["file_name"]
+			imgFile=self.path+"/"+self.set+"2014/"+self.coco.loadImgs(imgId)[0]["file_name"]
 			img = cv2.imread(imgFile)
 			
 			if img is None:
@@ -138,41 +121,7 @@ class CocoDataset:
 			boxes=np.reshape(boxes, [-1,4])
 			categories=np.array(categories, dtype=np.uint8)
 
-			
-			
 			return img, boxes, categories
-
-	def threadFn(self, tid, sess):
-		if tid==0:
-			self.initCoco()
-		else:
-			while self.coco is None:
-				time.sleep(1)
-
-		while True:
-			img, boxes, classes=self.load()
-			try:
-				sess.run(self.enqueueOp,feed_dict={self.image:img, self.boxes:boxes, self.classes:classes})
-			except tf.errors.CancelledError:
-				return
-
-
-	def startThreads(self, sess, nThreads=4):
-		self.threads=[]
-		for n in range(nThreads):
-			t=threading.Thread(target=self.threadFn, args=(n,sess))
-			t.daemon = True
-			t.start()
-			self.threads.append(t)
-
-	def get(self):
-		images, boxes, classes = self.queue.dequeue()
-		images = tf.expand_dims(images, axis=0)
-
-		images.set_shape([None, None, None, 3])
-		boxes.set_shape([None,4])
-
-		return images, boxes, classes
 
 	def count(self):
 		return len(self.images)
