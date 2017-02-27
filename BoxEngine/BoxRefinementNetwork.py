@@ -59,16 +59,16 @@ class BoxRefinementNetwork:
 			netScores = self.getBoxScores(boxes)
 			refOnehot = tf.one_hot(refs, self.nCategories+1, on_value=1.0 - self.nCategories*self.falseValue, off_value=self.falseValue)
 		
-			return tf.nn.softmax_cross_entropy_with_logits(netScores, refOnehot)
+			return tf.nn.softmax_cross_entropy_with_logits(logits=netScores, labels=refOnehot)
 
 	def refineBoxes(self, boxes):
 		with tf.name_scope("refineBoxes"):
 			boxFineData = self.roiMean(self.regressionMap, boxes)
 
-			x,y,w,h = BoxUtils.x0y0x1y1_to_xywh(*tf.unpack(boxes, axis=1))
-			x_rel, y_rel, w_rel, h_rel = tf.unpack(boxFineData, axis=1)
+			x,y,w,h = BoxUtils.x0y0x1y1_to_xywh(*tf.unstack(boxes, axis=1))
+			x_rel, y_rel, w_rel, h_rel = tf.unstack(boxFineData, axis=1)
 
-			refSizes = tf.pack([h,w], axis=1)
+			refSizes = tf.stack([h,w], axis=1)
 
 			x = x + x_rel * w
 			y = y + y_rel * h
@@ -76,7 +76,7 @@ class BoxRefinementNetwork:
 			w = w * tf.exp(w_rel)
 			h = h * tf.exp(h_rel)
 
-			return tf.pack(BoxUtils.xywh_to_x0y0x1y1(x,y,w,h), axis=1), refSizes
+			return tf.stack(BoxUtils.xywh_to_x0y0x1y1(x,y,w,h), axis=1), refSizes
 
 	def boxRefinementLoss(self, boxes, refBoxes):
 		with tf.name_scope("boxesRefinementLoss"):
@@ -106,7 +106,7 @@ class BoxRefinementNetwork:
 						negativeIndices = Utils.RandomSelect.randomSelectIndex(tf.shape(negativeBoxes)[0], nNegative)
 						negativeBoxes = tf.gather_nd(negativeBoxes, negativeIndices)
 
-					return self.classRefinementLoss(negativeBoxes, tf.zeros(tf.pack([tf.shape(negativeBoxes)[0],1]), dtype=tf.uint8))
+					return self.classRefinementLoss(negativeBoxes, tf.zeros(tf.stack([tf.shape(negativeBoxes)[0],1]), dtype=tf.uint8))
 			
 			def getRefinementLoss():
 				with tf.name_scope("getRefinementLoss"):
@@ -124,8 +124,8 @@ class BoxRefinementNetwork:
 					negBoxes = tf.gather_nd(proposals, negBoxIndices)
 
 					#Add GT boxes
-					posBoxes = tf.concat(0, [posBoxes,refBoxes])
-					posRefIndices = tf.concat(0, [posRefIndices, tf.reshape(tf.range(tf.shape(refClasses)[0]), [-1,1])])
+					posBoxes = tf.concat([posBoxes,refBoxes], 0)
+					posRefIndices = tf.concat([posRefIndices, tf.reshape(tf.range(tf.shape(refClasses)[0]), [-1,1])], 0)
 
 					#Call the loss if the box collection is not empty
 					nPositive = tf.shape(posBoxes)[0]
@@ -135,14 +135,14 @@ class BoxRefinementNetwork:
 						posLoss = tf.cond(nPositive > 0, lambda: getPosLoss(posBoxes, posRefIndices, 0)[0], lambda: tf.zeros((0,), tf.float32))
 						negLoss = tf.cond(nNegative > 0, lambda: getNegLoss(negBoxes, 0), lambda: tf.zeros((0,), tf.float32))
 
-						allLoss = tf.concat(0,[posLoss, negLoss])
+						allLoss = tf.concat([posLoss, negLoss], 0)
 						return tf.cond(tf.shape(allLoss)[0]>0, lambda: tf.reduce_mean(Utils.MultiGather.gatherTopK(allLoss, self.nTrainBoxes)), lambda: tf.constant(0.0))
 					else:
 						posLoss, posCount = tf.cond(nPositive > 0, lambda: getPosLoss(posBoxes, posRefIndices, self.nTrainPositives), lambda: tf.tuple([tf.constant(0.0), tf.constant(0,tf.int32)]))
 						negLoss = tf.cond(nNegative > 0, lambda: getNegLoss(negBoxes, self.nTrainBoxes-posCount), lambda: tf.constant(0.0))
 
 						nPositive = tf.cast(tf.shape(posLoss)[0], tf.float32)
-						nNegative = tf.cast(tf.shape(negLoss)[0], tf.float32)
+						nNegative = tf.cond(nNegative > 0, lambda: tf.cast(tf.shape(negLoss)[0], tf.float32), lambda: tf.constant(0.0))
 						
 						return (tf.reduce_mean(posLoss)*nPositive + tf.reduce_mean(negLoss)*nNegative)/(nNegative+nPositive)
 	

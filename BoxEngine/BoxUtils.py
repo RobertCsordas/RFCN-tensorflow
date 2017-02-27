@@ -18,8 +18,8 @@ import tensorflow as tf
 
 def iou(boxes, refBoxes, oneToAll=True):
 	with tf.name_scope("IOU"):
-		x0, y0, x1, y1 = tf.split(1,4,boxes)
-		ref_x0, ref_y0, ref_x1, ref_y1 = tf.split(1,4,refBoxes)
+		x0, y0, x1, y1 = tf.unstack(boxes, axis=1)
+		ref_x0, ref_y0, ref_x1, ref_y1 = tf.unstack(refBoxes, axis=1)
 
 		#Calculate box IOU
 		x0=tf.reshape(x0,[-1,1])
@@ -51,7 +51,7 @@ def iou(boxes, refBoxes, oneToAll=True):
 
 def filterSmallBoxes(boxes, others=None, minSize=16.0):
 	with tf.name_scope("filterSmallBoxes"):
-		x0,y0,x1,y1 = tf.unpack(boxes, axis=1)
+		x0,y0,x1,y1 = tf.unstack(boxes, axis=1)
 		
 		okIndices = tf.where(tf.logical_and((x1-x0) >= (minSize-1), (y1-y0) >= (minSize-1)))
 		okIndices = tf.cast(okIndices, tf.int32)
@@ -97,7 +97,7 @@ def mergeBoxData(list):
 		for l in list:
 			l2.append(tf.expand_dims(l, -1))
 		
-		res = tf.concat(tf.rank(list[0]), l2)
+		res = tf.concat(l2, tf.rank(list[0]))
 		return tf.reshape(res, [-1,len(list)])
 	
 

@@ -26,9 +26,9 @@ def smooth_l1(x):
 
 def boxRegressionLoss(boxes, refBoxes, boxSizes):
     with tf.name_scope("boxRegressionLoss"):
-        x, y, w, h = BoxUtils.x0y0x1y1_to_xywh(*tf.split(1,4,boxes))
-        boxH, boxW = tf.split(1,2,boxSizes)
-        ref_x, ref_y, ref_w, ref_h = BoxUtils.x0y0x1y1_to_xywh(*tf.split(1,4,refBoxes))
+        x, y, w, h = BoxUtils.x0y0x1y1_to_xywh(*tf.unstack(boxes, axis=1))
+        boxH, boxW = tf.unstack(boxSizes, axis=1)
+        ref_x, ref_y, ref_w, ref_h = BoxUtils.x0y0x1y1_to_xywh(*tf.unstack(refBoxes, axis=1))
 
         x=tf.reshape(x,[-1])
         y=tf.reshape(y,[-1])

@@ -67,7 +67,7 @@ class RPN:
 					boxRelativeCoordinates = slim.conv2d(net, 4*self.nAnchors, 1, activation_fn=None)
 
 				#split coordinates
-				x_raw, y_raw, w_raw, h_raw = tf.split(3, 4, boxRelativeCoordinates)
+				x_raw, y_raw, w_raw, h_raw = tf.split(boxRelativeCoordinates, 4, axis=3)
 
 				#Save raw boxes for loss
 				self.rawBoxes = BoxUtils.mergeBoxData([x_raw, y_raw, w_raw, h_raw])
@@ -78,7 +78,7 @@ class RPN:
 				#store the size of every box
 				with tf.name_scope('box_sizes'):
 					boxSizes = tf.reshape(self.tfAnchors, [1,1,1,-1,2])
-					boxSizes = tf.tile(boxSizes, tf.pack([1,self.hIn,self.wIn,1,1]))
+					boxSizes = tf.tile(boxSizes, tf.stack([1,self.hIn,self.wIn,1,1]))
 					self.boxSizes = tf.reshape(boxSizes, [-1,2])
 
 				#scores
@@ -139,7 +139,7 @@ class RPN:
 			
 				#Classification loss
 				refScores = tf.one_hot(tf.cast(oneIfPositive>0.5, tf.uint8), 2, on_value=0.999, off_value=0.001)
-				classificationLoss = tf.nn.softmax_cross_entropy_with_logits(scores, refScores)
+				classificationLoss = tf.nn.softmax_cross_entropy_with_logits(logits=scores, labels=refScores)
 
 				#Split to positive and negative
 				positiveIndices = tf.stop_gradient(tf.cast(tf.where(oneIfPositive >= 0.5), tf.int32))
@@ -177,7 +177,7 @@ class RPN:
 		
 	def getInsideMask(self, boxes, boxInsideRate=1.0):
 		with tf.name_scope('getInsideMask'):
-			x0, y0, x1, y1 = tf.unpack(boxes, axis=1)
+			x0, y0, x1, y1 = tf.unstack(boxes, axis=1)
 			
 			if boxInsideRate!=1.0:
 				w = x1-x0+1.0
@@ -200,12 +200,12 @@ class RPN:
 
 	def clipBoxesToEdge(self, boxes):
 		with tf.name_scope("clipBoxesToEdge"):
-			x0,y0,x1,y1 = tf.unpack(boxes, axis=1)
+			x0,y0,x1,y1 = tf.unstack(boxes, axis=1)
 			x0 = tf.maximum(tf.minimum(x0, self.imageW), 0.0)
 			x1 = tf.maximum(tf.minimum(x1, self.imageW), 0.0)
 			y0 = tf.maximum(tf.minimum(y0, self.imageH), 0.0)
 			y1 = tf.maximum(tf.minimum(y1, self.imageH), 0.0)
-			return tf.pack([x0,y0,x1,y1], axis=1)
+			return tf.stack([x0,y0,x1,y1], axis=1)
 		
 
 	def filterOutputBoxes(self, boxes, scores, others=[], preNmsCount=6000, maxOutSize=300, nmsThreshold=0.7): 

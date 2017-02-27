@@ -15,14 +15,11 @@
 # ==============================================================================
 
 import tensorflow as tf
-from tensorflow.python.ops import math_ops
-from tensorflow.python.ops import array_ops
-from tensorflow.python.ops import random_ops
 import threading
 
 def nonlinear(imageList, lower, upper):
 	with tf.name_scope('nonlinear') as scope:
-		factor = random_ops.random_uniform([], lower, upper)
+		factor = tf.random_uniform([], lower, upper)
 
 		res=[]
 		for i in imageList:
@@ -32,7 +29,7 @@ def nonlinear(imageList, lower, upper):
 
 def randomNormal(imageList, stddev):
 	with tf.name_scope('randomNormal') as scope:
-		factor = random_ops.random_uniform([], 0, stddev)
+		factor = tf.random_uniform([], 0, stddev)
 
 		res=[]
 		for i in imageList:
@@ -42,16 +39,16 @@ def randomNormal(imageList, stddev):
 
 def mirror(image, boxes):
 	def doMirror(image, boxes):
-		image = array_ops.reverse(image, [False, False, True, False])
-		x0,y0,x1,y1 = tf.unpack(boxes, axis=1)
+		image = tf.reverse(image, axis=[2])
+		x0,y0,x1,y1 = tf.unstack(boxes, axis=1)
 
 		w=tf.cast(tf.shape(image)[2], tf.float32)
 		x0_m=w-x1
 		x1_m=w-x0
 
-		return image, tf.pack([x0_m,y0,x1_m,y1], axis=1)
+		return image, tf.stack([x0_m,y0,x1_m,y1], axis=1)
 			
-	uniform_random = random_ops.random_uniform([], 0, 1.0)
+	uniform_random = tf.random_uniform([], 0, 1.0)
 	return tf.cond(uniform_random < 0.5, lambda: tf.tuple([image, boxes]), lambda: doMirror(image, boxes))
 
 def augment(image, boxes, classes):

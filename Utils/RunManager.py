@@ -17,9 +17,11 @@
 import sys
 
 class RunManager():
-	def __init__(self, sess):
+	def __init__(self, sess, options=None, run_metadata=None):
 		self.sess=sess
 		self.groups={}
+		self.options=options
+		self.run_metadata=run_metadata
 
 	def add(self, name, tensorList, enabled=True, modRun=0):
 		self.groups[name]={
@@ -92,7 +94,7 @@ class RunManager():
 
 	def modRun(self, counter, feed_dict=None, options=None, run_metadata=None):
 		self.buildInputMod(counter=counter)
-		return self.runAndMerge(feed_dict, options=options, run_metadata=run_metadata)
+		return self.runAndMerge(feed_dict, options=options if options is not None else self.options, run_metadata=run_metadata if run_metadata is not None else self.run_metadata)
 
 	def enable(self, name, enabled=True):
 		self.groups[name]["enabled"]=enabled

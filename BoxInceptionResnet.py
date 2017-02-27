@@ -54,7 +54,7 @@ class BoxInceptionResnet(BoxNetwork):
 						padding='SAME',
 						activation_fn = tf.nn.relu):
 
-					net = tf.concat(3, [ tf.image.resize_bilinear(scale_32, tf.shape(scale_16)[1:3]), scale_16])
+					net = tf.concat([ tf.image.resize_bilinear(scale_32, tf.shape(scale_16)[1:3]), scale_16], 3)
 					rpnInput = slim.conv2d(net, 1024, 1)
 					featureInput = slim.conv2d(net, 1536, 1)
 

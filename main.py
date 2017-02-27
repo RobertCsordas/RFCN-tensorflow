@@ -37,6 +37,7 @@ parser.add_argument('-trainFrom', type=str, default="-1", help='Train from this 
 parser.add_argument('-hardMining', type=int, default=1, help="Enable hard example mining.")
 parser.add_argument('-gpu', type=str, default="0", help='Train on this GPU(s)')
 parser.add_argument('-mergeValidationSet', type=int, default=1, help='Merge validation set to training set.')
+parser.add_argument('-profile', type=int, default=0, help='Enable profiling', save=False)
 
 opt=parser.parse_args()
 
@@ -68,7 +69,7 @@ from BoxInceptionResnet import *
 from Dataset import Augment
 from Visualize import VisualizeOutput
 from Utils import Model
-
+from tensorflow.python.client import timeline
 
 globalStep = tf.Variable(0, name='globalStep', trainable=False)
 globalStepInc=tf.assign_add(globalStep,1)
@@ -117,7 +118,13 @@ trainOp=createUpdateOp()
 saver=tf.train.Saver(keep_checkpoint_every_n_hours=4, max_to_keep=100)
 
 
-
+if opt.profile==1:
+	runOptions = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
+	runMetadata = tf.RunMetadata()
+	iterationsSinceStart=0
+else:
+	runOptions=None
+	runMetadata=None
 
 with tf.Session(config=tf.ConfigProto(intra_op_parallelism_threads=8)) as sess:
 	if not loadCheckpoint(sess, opt.name+"/save/", opt.resume):
@@ -128,7 +135,7 @@ with tf.Session(config=tf.ConfigProto(intra_op_parallelism_threads=8)) as sess:
 
 	dataset.startThreads(sess)
 
-	runManager = RunManager(sess)
+	runManager = RunManager(sess, options=runOptions, run_metadata=runMetadata)
 	runManager.add("train", [globalStepInc,trainOp], modRun=1)
 
 
@@ -141,6 +148,21 @@ with tf.Session(config=tf.ConfigProto(intra_op_parallelism_threads=8)) as sess:
 	while True:
 		#run various parts of the network
 		res = runManager.modRun(i)
+
+		if opt.profile==1:
+			print("Profiling step %d" % iterationsSinceStart)
+			iterationsSinceStart+=1
+			if iterationsSinceStart==5:
+				print("Writing profile data...")
+				tl = timeline.Timeline(runMetadata.step_stats)
+				ctf = tl.generate_chrome_trace_format()
+				with open('timeline.json', 'w') as f:
+					f.write(ctf)
+
+				print("Done.")
+				sys.exit(0)
+
+			
 		i, loss=res["train"]
 
 		lossSum+=loss
