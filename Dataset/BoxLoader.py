@@ -20,15 +20,17 @@ import random
 import tensorflow as tf
 import threading
 import time
+import numpy as np
 
 class BoxLoader:
 	QUEUE_CAPACITY=16
 
-	def __init__(self, sources=[]):
+	def __init__(self, sources=[], initOnStart=True):
 		self.totalCount = 0
 		self.counts=[]
 		self.sources=[]
 		self.initDone=False
+		self.initOnStart=initOnStart
 
 		with tf.name_scope('dataset') as scope:
 			self.queue = tf.FIFOQueue(dtypes=[tf.float32, tf.float32, tf.uint8],
@@ -60,8 +62,9 @@ class BoxLoader:
 				return
 
 	def init(self):
-		for s in self.sources:
-			s.init()
+		if not self.initOnStart:
+			for s in self.sources:
+				s.init()
 
 		for s in self.sources:
 			c = s.count()
@@ -90,6 +93,8 @@ class BoxLoader:
 
 	def add(self, source):
 		assert self.initDone==False
+		if self.initOnStart:
+			source.init()
 		self.sources.append(source)
 
 	def selectSource(self):
@@ -105,3 +110,6 @@ class BoxLoader:
 
 	def getCaptions(self, categories):
 		return self.sources[0].getCaptions(categories)
+
+	def getCaptionMap(self):
+		return self.getCaptions(np.arange(0,self.categoryCount()))

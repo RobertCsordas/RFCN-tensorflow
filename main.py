@@ -22,10 +22,10 @@ from Utils.ArgSave import *
 import sys
 import os
 
-parser = StorableArgparse(description='Kaggle fish trainer.')
+parser = StorableArgparse(description='RFCN trainer.')
 parser.add_argument('-learningRate', type=float, default=0.0001, help='Learning rate')
 parser.add_argument('-adamEps', type=float, default=1e-8, help='Adam epsilon')
-parser.add_argument('-dataset', type=str, default="/data/Datasets/COCO", help="Path to kaggle dataset")
+parser.add_argument('-dataset', type=str, default="/data/Datasets/COCO", help="Path to COCO dataset")
 parser.add_argument('-name', type=str, default="save", help="Directory to save checkpoints")
 parser.add_argument('-saveInterval', type=int, default=10000, help='Save model for this amount of iterations')
 parser.add_argument('-reportInterval', type=int, default=30, help='Repeat after this amount of iterations')
@@ -87,6 +87,7 @@ images, boxes, classes = Augment.augment(*dataset.get())
 
 
 print("Number of categories: "+str(dataset.categoryCount()))
+print(dataset.getCaptionMap())
 
 
 net = BoxInceptionResnet(images, dataset.categoryCount(), name="boxnet", trainFrom=opt.trainFrom, hardMining=opt.hardMining==1)
