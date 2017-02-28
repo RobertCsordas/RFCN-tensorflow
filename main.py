@@ -38,6 +38,7 @@ parser.add_argument('-hardMining', type=int, default=1, help="Enable hard exampl
 parser.add_argument('-gpu', type=str, default="0", help='Train on this GPU(s)')
 parser.add_argument('-mergeValidationSet', type=int, default=1, help='Merge validation set to training set.')
 parser.add_argument('-profile', type=int, default=0, help='Enable profiling', save=False)
+parser.add_argument('-randZoom', type=int, default=1, help='Enable box aware random zooming and cropping')
 
 opt=parser.parse_args()
 
@@ -77,7 +78,7 @@ globalStepInc=tf.assign_add(globalStep,1)
 Model.download()
 
 dataset = BoxLoader()
-dataset.add(CocoDataset(opt.dataset))
+dataset.add(CocoDataset(opt.dataset, randomZoom=opt.randZoom==1))
 if opt.mergeValidationSet==1:
 	dataset.add(CocoDataset(opt.dataset, set="val"))
 

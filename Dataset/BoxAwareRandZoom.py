@@ -18,7 +18,7 @@ import cv2
 import random
 import numpy as np
 
-def randZoom(img, boxes, minImageRatio=0.3, minBoxRatio=0.8):
+def randZoom(img, boxes, minImageRatio=0.6, minBoxRatio=1.0, keepOriginalRatio=True, keepOriginalSize=True, keepBoxes=False):
 	h=img.shape[0]
 	w=img.shape[1]
 
@@ -119,6 +119,42 @@ def randZoom(img, boxes, minImageRatio=0.3, minBoxRatio=0.8):
 			assert(False)
 		pass
 
+	def filterBoxes(top, bottom, left, right, zoom):
+		newBoxes = []
+		roiW = right - left
+		roiH = bottom - top
+		for b in boxes:
+			if b["x"] >= right or (b["x"]+b["w"]) <= left or b["y"] >= bottom or (b["y"]+b["h"]) <= top:
+				if keepBoxes:
+					newBoxes.append({"x":0,"y":0,"w":0,"h":0})
+				continue
+
+			newBox = b.copy()
+			newBox["x"] -= left
+			if newBox["x"] < 0:
+				newBox["w"] += newBox["x"]
+				newBox["x"] = 0
+
+			newBox["y"] -= top
+			if newBox["y"] < 0:
+				newBox["h"] += newBox["y"]
+				newBox["y"] = 0
+
+			if (newBox["w"] + newBox["x"]) > roiW:
+				newBox["w"] = roiW - newBox["x"]
+
+			if (newBox["h"] + newBox["y"]) > roiH:
+				newBox["h"] = roiH - newBox["y"]
+
+			newBox["x"]=int( float(newBox["x"]) * zoom )
+			newBox["y"]=int( float(newBox["y"]) * zoom )
+			newBox["w"]=int( float(newBox["w"]) * zoom )
+			newBox["h"]=int( float(newBox["h"]) * zoom )
+
+			newBoxes.append(newBox)
+
+		return newBoxes
+
 	if len(boxes)>1:
 		box = boxes[random.randint(0, len(boxes)-1)]
 	elif len(boxes)==1:
@@ -138,10 +174,17 @@ def randZoom(img, boxes, minImageRatio=0.3, minBoxRatio=0.8):
 
 	#checkBox(left, top, right, bottom, box)
 
-	left, top, right, bottom = growBox(left, top, right, bottom)
+	if keepOriginalRatio:
+		left, top, right, bottom = growBox(left, top, right, bottom)
 	
 	#checkBox(left, top, right, bottom, box)
 
 	img = img[top:bottom, left:right]
-	img = cv2.resize(img, (w,h), cv2.INTER_CUBIC)
-	return img	
+
+	if keepOriginalSize:
+		zoom = (float(w)) / img.shape[1]
+		img = cv2.resize(img, (w,h), cv2.INTER_CUBIC)
+	else:
+		zoom = 1
+
+	return img, filterBoxes(top, bottom, left, right, zoom)

@@ -19,14 +19,16 @@ import random
 import numpy as np
 import cv2
 import tensorflow as tf
+from Dataset import BoxAwareRandZoom
 
 class CocoDataset:
-	def __init__(self, path, set="train", normalizeSize=True):
+	def __init__(self, path, set="train", normalizeSize=True, randomZoom=True):
 		print(path)
 		self.path=path
 		self.coco=None
 		self.normalizeSize=normalizeSize
 		self.set=set
+		self.randomZoom=randomZoom
 
 	def init(self):
 		self.coco=coco.COCO(self.path+"/annotations/instances_"+self.set+"2014.json")
@@ -71,7 +73,7 @@ class CocoDataset:
 
 			imgFile=self.path+"/"+self.set+"2014/"+self.coco.loadImgs(imgId)[0]["file_name"]
 			img = cv2.imread(imgFile)
-			
+
 			if img is None:
 				print("ERROR: Failed to load "+imgFile)
 				continue
@@ -79,6 +81,19 @@ class CocoDataset:
 			sizeMul = 1.0
 			padTop = 0
 			padLeft = 0
+
+			if len(instances)<=0:
+				continue
+
+			iBoxes=[{
+						"x":int(i["bbox"][0]),
+						"y":int(i["bbox"][1]),
+						"w":int(i["bbox"][2]),
+						"h":int(i["bbox"][3])
+					} for i in instances]
+	
+			if self.randomZoom:
+				img, iBoxes = BoxAwareRandZoom.randZoom(img, iBoxes, keepOriginalRatio=False, keepOriginalSize=False, keepBoxes=True)
 
 			if self.normalizeSize:
 				sizeMul = 640.0 / min(img.shape[0], img.shape[1])
@@ -101,8 +116,8 @@ class CocoDataset:
 
 			boxes=[]
 			categories=[]
-			for i in instances:
-				x1,y1,w,h = i["bbox"]
+			for i in range(len(instances)):
+				x1,y1,w,h = iBoxes[i]["x"],iBoxes[i]["y"],iBoxes[i]["w"],iBoxes[i]["h"]
 				newBox=[int(x1*sizeMul) - padLeft, int(y1*sizeMul) - padTop, int((x1+w)*sizeMul) - padLeft, int((y1+h)*sizeMul) - padTop]
 				newBox[0] = max(min(newBox[0], img.shape[1]),0)
 				newBox[1] = max(min(newBox[1], img.shape[0]),0)
@@ -111,7 +126,7 @@ class CocoDataset:
 
 				if (newBox[2]-newBox[0]) >= 16 and (newBox[3]-newBox[1]) >= 16:
 					boxes.append(newBox)
-					categories.append(self.fromCocoCategory[i["category_id"]])
+					categories.append(self.fromCocoCategory[instances[i]["category_id"]])
 
 			if len(boxes)==0:
 				print("Warning: No boxes on image. Skipping.")
