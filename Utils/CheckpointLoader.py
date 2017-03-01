@@ -38,7 +38,7 @@ def loadExitingFromCheckpoint(file, sess):
 	loadVarsFromCheckpoint(sess, varsToRead, file)
 	return loadedVars
 
-def loadCheckpoint(sess, saveDir, resume):
+def loadCheckpoint(sess, saveDir, resume, ignoreVarsInFileNotInSess=False):
 	def initGlobalVars():
 		if "global_variables_initializer" in tf.__dict__:
 			sess.run(tf.global_variables_initializer())
@@ -69,13 +69,13 @@ def loadCheckpoint(sess, saveDir, resume):
 					print("   WARNING: Not loaded: "+v)
 					allRestored = False
 
-			
-			for v in loadedVars:
-				if v not in allVars:
-					if firstError:
-						print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-						firstError = False
-					print("   WARNING: Variable doesn't exists: "+v)
+			if not ignoreVarsInFileNotInSess:
+				for v in loadedVars:
+					if v not in allVars:
+						if firstError:
+							print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+							firstError = False
+						print("   WARNING: Variable doesn't exists: "+v)
 
 			if not allRestored:
 				print("Missing variable found. Initializing variables first.")

@@ -49,8 +49,28 @@ net = BoxInceptionResnet(image, len(categories), name="boxnet")
 
 boxes, scores, classes = net.getBoxes(scoreThreshold=opt.threshold)
 
+def preprocessInput(img):
+	def calcPad(size):
+		m = size % 32
+		p = int(m/2)
+		s = size - m
+		return s,p
+
+	zoom = max(640.0 / img.shape[0], 640.0 / img.shape[1])
+	img = cv2.resize(img, (int(zoom*img.shape[1]), int(zoom*img.shape[0])))
+
+	if img.shape[0] % 32 != 0:
+		s,p = calcPad(img.shape[0])
+		img = img[p:p+s]
+
+	if img.shape[1] % 32 != 0:
+		s,p = calcPad(img.shape[1])
+		img = img[:,p:p+s]
+
+	return img
+
 with tf.Session() as sess:
-	if not CheckpointLoader.loadCheckpoint(sess, None, opt.n):
+	if not CheckpointLoader.loadCheckpoint(sess, None, opt.n, ignoreVarsInFileNotInSess=True):
 		print("Failed to load network.")
 		sys.exit(-1)
 
@@ -59,8 +79,7 @@ with tf.Session() as sess:
 		print("Failed to open input file.")
 		sys.exit(-1)
 
-	zoom = max(600.0 / img.shape[0], 600.0 / img.shape[1])
-	img = cv2.resize(img, (int(zoom*img.shape[1]), int(zoom*img.shape[0])))
+	img = preprocessInput(img)	
 
 	rBoxes, rScores, rClasses = sess.run([boxes, scores, classes], feed_dict={image: np.expand_dims(img, 0)})
 
