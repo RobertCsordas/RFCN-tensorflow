@@ -21,11 +21,20 @@ def getCheckpointVarList(file):
 	varsToRead = []
 	loadedVars = []
 	for v in reader.get_variable_to_shape_map().keys():
-		varsToRead += tf.contrib.slim.get_variables_by_name(v)
+		tfVar = tf.contrib.slim.get_variables_by_name(v)
+		tfVarFitlered=[]
+		for var in tfVar:
+			if var.op.name==v:
+				tfVarFitlered.append(var)
+ 
+		if len(tfVarFitlered)==0:
+			continue
+ 
+		varsToRead += tfVarFitlered
 		loadedVars.append(v)
 	
 	del reader
-
+ 
 	return varsToRead, loadedVars
 
 def loadVarsFromCheckpoint(sess, vars, file):

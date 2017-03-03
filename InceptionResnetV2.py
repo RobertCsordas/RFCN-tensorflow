@@ -75,7 +75,7 @@ class InceptionResnetV2:
 		return net
 
 	@staticmethod
-	def define(inputs, reuse, weightDecay, scope='InceptionResnetV2', trainFrom=None):
+	def define(inputs, reuse, weightDecay, scope='InceptionResnetV2', trainFrom=None, freezeBatchNorm=False):
 		"""Creates the Inception Resnet V2 model.
 		Args:
 			inputs: a 4-D tensor of size [batch_size, height, width, 3].
@@ -114,7 +114,8 @@ class InceptionResnetV2:
 			currBlock = name
 			if (trainFrom is not None) and (not trainBnEntered) and (trainFrom==name or trainFrom=="start"):
 				print("Enabling training on "+trainFrom)
-				trainBatchNormScope.__enter__()
+				if not freezeBatchNorm:
+					trainBatchNormScope.__enter__()
 				weightDecayScope.__enter__()
 				trainBnEntered=True
 
@@ -127,7 +128,8 @@ class InceptionResnetV2:
 		
 		def endAll():
 			if trainBnEntered:
-				trainBatchNormScope.__exit__(None, None, None)
+				if not freezeBatchNorm:
+					trainBatchNormScope.__exit__(None, None, None)
 				weightDecayScope.__exit__(None,None,None)
 
 		with tf.variable_scope(scope, 'InceptionResnetV2', [inputs], reuse=reuse) as scope:
@@ -239,7 +241,7 @@ class InceptionResnetV2:
 			return end_points, scope, scopes
 
 
-	def __init__(self, name, inputs, trainFrom = None, reuse=False, weightDecay=0.00004, batchNormDecay=0.9997, batchNormEpsilon=0.001):
+	def __init__(self, name, inputs, trainFrom = None, reuse=False, weightDecay=0.00004, batchNormDecay=0.9997, batchNormEpsilon=0.001, freezeBatchNorm=False):
 		self.name = name
 		self.inputs = inputs
 		self.trainFrom = trainFrom
@@ -258,7 +260,7 @@ class InceptionResnetV2:
 					normalizer_fn=slim.batch_norm,
 					normalizer_params=batch_norm_params) as scope:
 
-				self.endPoints, self.scope, self.scopeList = InceptionResnetV2.define(inputs, weightDecay = weightDecay, trainFrom=trainFrom, scope=name, reuse = reuse)
+				self.endPoints, self.scope, self.scopeList = InceptionResnetV2.define(inputs, weightDecay = weightDecay, trainFrom=trainFrom, scope=name, reuse = reuse, freezeBatchNorm = freezeBatchNorm)
 
 	def importWeights(self, sess, filename, includeTraining=False):
 		ignores = [] if includeTraining or (self.trainFrom is None) else self.getScopes(fromLayer = self.trainFrom, inclusive = True)

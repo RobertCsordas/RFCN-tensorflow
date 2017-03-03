@@ -39,6 +39,7 @@ parser.add_argument('-gpu', type=str, default="0", help='Train on this GPU(s)')
 parser.add_argument('-mergeValidationSet', type=int, default=1, help='Merge validation set to training set.')
 parser.add_argument('-profile', type=int, default=0, help='Enable profiling', save=False)
 parser.add_argument('-randZoom', type=int, default=1, help='Enable box aware random zooming and cropping')
+parser.add_argument('-freezeBatchNorm', type=int, default=1, help='Freeze batch normalization during finetuning.')
 
 opt=parser.parse_args()
 
@@ -90,30 +91,26 @@ print("Number of categories: "+str(dataset.categoryCount()))
 print(dataset.getCaptionMap())
 
 
-net = BoxInceptionResnet(images, dataset.categoryCount(), name="boxnet", trainFrom=opt.trainFrom, hardMining=opt.hardMining==1)
-
-loss = net.getLoss(boxes, classes)
-slim.losses.add_loss(loss)
-
-optimizer=tf.train.AdamOptimizer(learning_rate=opt.learningRate, epsilon=opt.adamEps)
+net = BoxInceptionResnet(images, dataset.categoryCount(), name="boxnet", trainFrom=opt.trainFrom, hardMining=opt.hardMining==1, freezeBatchNorm=opt.freezeBatchNorm==1)
+slim.losses.add_loss(net.getLoss(boxes, classes))
 
 def createUpdateOp(gradClip=1):
-	update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
-	totalLoss = loss #slim.losses.get_total_loss()
-	grads = optimizer.compute_gradients(totalLoss, var_list=net.getVariables())
-	if gradClip is not None:
-		cGrads = []
-		for g, v in grads:
-			if g is None:
-				print("WARNING: no grad for variable "+v.op.name)
-				continue
-			cGrads.append((tf.clip_by_value(g, -float(gradClip), float(gradClip)), v))
-		grads = cGrads
+	with tf.name_scope("optimizer"):
+		optimizer=tf.train.AdamOptimizer(learning_rate=opt.learningRate, epsilon=opt.adamEps)
+		update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+		totalLoss = slim.losses.get_total_loss()
+		grads = optimizer.compute_gradients(totalLoss, var_list=net.getVariables())
+		if gradClip is not None:
+			cGrads = []
+			for g, v in grads:
+				if g is None:
+					print("WARNING: no grad for variable "+v.op.name)
+					continue
+				cGrads.append((tf.clip_by_value(g, -float(gradClip), float(gradClip)), v))
+			grads = cGrads
 
-	update_ops.append(optimizer.apply_gradients(grads))
-	return control_flow_ops.with_dependencies([tf.group(*update_ops)], totalLoss, name='train_op')
-
-#loss = net.get
+		update_ops.append(optimizer.apply_gradients(grads))
+		return control_flow_ops.with_dependencies([tf.group(*update_ops)], totalLoss, name='train_op')
 
 trainOp=createUpdateOp()
 

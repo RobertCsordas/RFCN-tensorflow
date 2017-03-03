@@ -24,7 +24,7 @@ from BoxEngine.BoxNetwork import BoxNetwork
 
 
 class BoxInceptionResnet(BoxNetwork):
-	def __init__(self, inputs, nCategories, name="BoxNetwork", weightDecay=0.00004, reuse=False, isTraining=True, trainFrom=None, hardMining=True):
+	def __init__(self, inputs, nCategories, name="BoxNetwork", weightDecay=0.00004, freezeBatchNorm=False, reuse=False, isTraining=True, trainFrom=None, hardMining=True):
 		self.boxThreshold = 0.5
 
 		if trainFrom == "0":
@@ -35,7 +35,7 @@ class BoxInceptionResnet(BoxNetwork):
 		print("Training network from "+(trainFrom if trainFrom is not None else "end"))
 
 		with tf.variable_scope(name, reuse=reuse) as scope:
-			self.googleNet = InceptionResnetV2("features", inputs, trainFrom=trainFrom)
+			self.googleNet = InceptionResnetV2("features", inputs, trainFrom=trainFrom, freezeBatchNorm=freezeBatchNorm)
 			self.scope=scope
 		
 			with tf.variable_scope("Box"):
