@@ -39,13 +39,9 @@ class BoxInceptionResnet(BoxNetwork):
 			self.scope=scope
 		
 			with tf.variable_scope("Box"):
-				#scale_16 = self.googleNet.getOutput("Mixed_6a")
-				#scale_32 = self.googleNet.getOutput("PrePool")
-
-				#BoxNetwork.__init__(self, nCategories, scale_16, 16, [16,16], scale_32, 32, [32,32], weightDecay=weightDecay, hardMining=hardMining)
-
-
+				#Pepeat_1 - last 1/16 layer, Mixed_6a - first 1/16 layer
 				scale_16 = self.googleNet.getOutput("Repeat_1")[:,1:-1,1:-1,:]
+				#scale_16 = self.googleNet.getOutput("Mixed_6a")[:,1:-1,1:-1,:]
 				scale_32 = self.googleNet.getOutput("PrePool")
 
 				with slim.arg_scope([slim.conv2d],
@@ -56,8 +52,9 @@ class BoxInceptionResnet(BoxNetwork):
 
 					net = tf.concat([ tf.image.resize_bilinear(scale_32, tf.shape(scale_16)[1:3]), scale_16], 3)
 					rpnInput = slim.conv2d(net, 1024, 1)
+					
+					#BoxNetwork.__init__(self, nCategories, rpnInput, 16, [32,32], scale_32, 32, [32,32], weightDecay=weightDecay, hardMining=hardMining)
 					featureInput = slim.conv2d(net, 1536, 1)
-
 					BoxNetwork.__init__(self, nCategories, rpnInput, 16, [32,32], featureInput, 16, [32,32], weightDecay=weightDecay, hardMining=hardMining)
 	
 	def getVariables(self, includeFeatures=False):

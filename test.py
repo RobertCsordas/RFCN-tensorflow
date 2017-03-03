@@ -24,13 +24,16 @@ import tensorflow as tf
 from BoxInceptionResnet import BoxInceptionResnet
 from Visualize import Visualize
 from Utils import CheckpointLoader
+from Utils import PreviewIO
 
 parser = argparse.ArgumentParser(description="RFCN tester")
 parser.add_argument('-gpu', type=str, default="0", help='Train on this GPU(s)')
 parser.add_argument('-n', type=str, help='Network checkpoint file')
 parser.add_argument('-i', type=str, help='Input file.')
 parser.add_argument('-o', type=str, default="", help='Write output here.')
+parser.add_argument('-p', type=int, default=1, help='Show preview')
 parser.add_argument('-threshold', type=float, default=0.5, help='Detection threshold')
+parser.add_argument('-delay', type=int, default=-1, help='Delay between frames in visualization. -1 for automatic, 0 for wait for keypress.')
 
 opt=parser.parse_args()
 os.environ["CUDA_VISIBLE_DEVICES"] = opt.gpu
@@ -48,6 +51,10 @@ image = tf.placeholder(tf.float32, [None, None, None, 3])
 net = BoxInceptionResnet(image, len(categories), name="boxnet")
 
 boxes, scores, classes = net.getBoxes(scoreThreshold=opt.threshold)
+
+
+input = PreviewIO.PreviewInput(opt.i)
+output = PreviewIO.PreviewOutput(opt.o, input.getFps())
 
 def preprocessInput(img):
 	def calcPad(size):
@@ -74,19 +81,22 @@ with tf.Session() as sess:
 		print("Failed to load network.")
 		sys.exit(-1)
 
-	img = cv2.imread(opt.i)
-	if img is None:
-		print("Failed to open input file.")
-		sys.exit(-1)
+	while True:
+		img = input.get()
+		if img is None:
+			break
 
-	img = preprocessInput(img)	
+		img = preprocessInput(img)	
 
-	rBoxes, rScores, rClasses = sess.run([boxes, scores, classes], feed_dict={image: np.expand_dims(img, 0)})
+		rBoxes, rScores, rClasses = sess.run([boxes, scores, classes], feed_dict={image: np.expand_dims(img, 0)})
 
-	res = Visualize.drawBoxes(img, rBoxes, rClasses, [categories[i] for i in rClasses.tolist()], palette, scores=rScores)
+		res = Visualize.drawBoxes(img, rBoxes, rClasses, [categories[i] for i in rClasses.tolist()], palette, scores=rScores)
 
-	if opt.o!="":
-		cv2.imwrite(opt.o, res)
+		output.put(input.getName(), res)
 
-	cv2.imshow("result", res)
-	cv2.waitKey(0)
+		if opt.p==1:
+			cv2.imshow("result", res)
+			if opt.o=="":
+				cv2.waitKey(input.getDelay() if opt.delay <0 else opt.delay)
+			else:
+				cv2.waitKey(1)
