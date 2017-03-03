@@ -69,8 +69,8 @@ class RPN:
 				#split coordinates
 				x_raw, y_raw, w_raw, h_raw = tf.split(boxRelativeCoordinates, 4, axis=3)
 
-				#Save raw boxes for loss
-				self.rawBoxes = BoxUtils.mergeBoxData([x_raw, y_raw, w_raw, h_raw])
+				#Save raw box sizes for loss
+				self.rawSizes = BoxUtils.mergeBoxData([w_raw, h_raw])
 							
 				#Convert NN outputs to BBox coordinates
 				self.boxes = BoxUtils.nnToImageBoxes(x_raw, y_raw, w_raw, h_raw, self.wA, self.hA, self.inputDownscale, self.offset)
@@ -112,14 +112,14 @@ class RPN:
 				return oneIfPositive, maxIou, bestIou
 
 
-		def getPositiveLoss(boxes, boxSizes, positiveIndices, bestIou, classificationLoss):
+		def getPositiveLoss(boxes, rawSizes, boxSizes, positiveIndices, bestIou, classificationLoss):
 			with tf.name_scope('getPositiveLoss'):
-				positiveBoxes, positiveBoxSizes, positiveRefIndices, positiveClassificationLoss = \
-					MultiGather.gather([boxes, boxSizes, bestIou, classificationLoss], positiveIndices)
+				positiveBoxes, positiveRawSizes, positiveBoxSizes, positiveRefIndices, positiveClassificationLoss = \
+					MultiGather.gather([boxes, rawSizes, boxSizes, bestIou, classificationLoss], positiveIndices)
 			
 				#Regression loss
 				positiveRefs = tf.gather_nd(refBoxes, positiveRefIndices)
-				return Loss.boxRegressionLoss(positiveBoxes, positiveRefs, positiveBoxSizes)*self.regressionWeight  + positiveClassificationLoss
+				return Loss.boxRegressionLoss(positiveBoxes, positiveRawSizes, positiveRefs, positiveBoxSizes)*self.regressionWeight  + positiveClassificationLoss
 
 		def emptyPositiveLoss():
 			with tf.name_scope('emptyPositiveLoss'):
@@ -133,7 +133,7 @@ class RPN:
 			with tf.name_scope('emptyNegativeLoss'):
 				return tf.zeros((0,),tf.float32)
 
-		def calcAllLosses(refAnchors, boxes, scores, boxSizes):
+		def calcAllLosses(refAnchors, boxes, rawSizes, scores, boxSizes):
 			with tf.name_scope('calcAllRPNLosses'):
 				oneIfPositive, maxIou, bestIou = getPositiveBoxes(refAnchors)
 			
@@ -145,7 +145,7 @@ class RPN:
 				positiveIndices = tf.stop_gradient(tf.cast(tf.where(oneIfPositive >= 0.5), tf.int32))
 				negativeIndices = tf.stop_gradient(tf.cast(tf.where(tf.logical_and(oneIfPositive < 0.5, maxIou < self.negativeIouThreshold)), tf.int32))
 
-				p = tf.cond(tf.shape(positiveIndices)[0]>0, lambda:getPositiveLoss(boxes, boxSizes, positiveIndices, bestIou, classificationLoss), lambda: emptyPositiveLoss())
+				p = tf.cond(tf.shape(positiveIndices)[0]>0, lambda:getPositiveLoss(boxes, rawSizes, boxSizes, positiveIndices, bestIou, classificationLoss), lambda: emptyPositiveLoss())
 				n = tf.cond(tf.shape(negativeIndices)[0]>0, lambda:getNegativeLosses(boxes, negativeIndices, classificationLoss), lambda: emptyNegativeLoss())
 
 				#return positive losses, negative losses, positive boxes, positive reference indices, negative boxes
@@ -159,8 +159,8 @@ class RPN:
 		def calcLoss():
 			with tf.name_scope('calcRPNLoss'):
 				#Filter cross boundary boxes and get positives
-				inAnchros, inBoxes, inScores, inBoxSizes = self.filterCrossBoundaryBoxes(self.genAllAnchors(), [self.boxes, self.scores, self.boxSizes])
-				positiveLosses, negativeLosses = calcAllLosses(inAnchros, inBoxes, inScores, inBoxSizes)
+				inAnchros, inBoxes, inScores, inBoxSizes, inRawSizes = self.filterCrossBoundaryBoxes(self.genAllAnchors(), [self.boxes, self.scores, self.boxSizes, self.rawSizes])
+				positiveLosses, negativeLosses = calcAllLosses(inAnchros, inBoxes, inRawSizes, inScores, inBoxSizes)
 
 				pCount = tf.shape(positiveLosses)[0]
 				nCount = tf.shape(negativeLosses)[0]

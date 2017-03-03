@@ -61,14 +61,15 @@ class BoxRefinementNetwork:
 		
 			return tf.nn.softmax_cross_entropy_with_logits(logits=netScores, labels=refOnehot)
 
-	def refineBoxes(self, boxes):
+	def refineBoxes(self, boxes, needSizes):
 		with tf.name_scope("refineBoxes"):
 			boxFineData = self.roiMean(self.regressionMap, boxes)
 
 			x,y,w,h = BoxUtils.x0y0x1y1_to_xywh(*tf.unstack(boxes, axis=1))
 			x_rel, y_rel, w_rel, h_rel = tf.unstack(boxFineData, axis=1)
 
-			refSizes = tf.stack([h,w], axis=1)
+			if needSizes:
+				refSizes = tf.stack([h,w], axis=1)
 
 			x = x + x_rel * w
 			y = y + y_rel * h
@@ -76,12 +77,17 @@ class BoxRefinementNetwork:
 			w = w * tf.exp(w_rel)
 			h = h * tf.exp(h_rel)
 
-			return tf.stack(BoxUtils.xywh_to_x0y0x1y1(x,y,w,h), axis=1), refSizes
+			refinedBoxes = tf.stack(BoxUtils.xywh_to_x0y0x1y1(x,y,w,h), axis=1)
+
+			if needSizes:
+				return refinedBoxes, refSizes, boxFineData[:,2:4]
+			else:
+				return refinedBoxes
 
 	def boxRefinementLoss(self, boxes, refBoxes):
 		with tf.name_scope("boxesRefinementLoss"):
-			refinedBoxes, refSizes = self.refineBoxes(boxes)
-			return Loss.boxRegressionLoss(refinedBoxes, refBoxes, refSizes)
+			refinedBoxes, refSizes, rawSizes = self.refineBoxes(boxes, True)
+			return Loss.boxRegressionLoss(refinedBoxes, rawSizes, refBoxes, refSizes)
 
 	def loss(self, proposals, refBoxes, refClasses):
 		with tf.name_scope("BoxRefinementNetworkLoss"):
@@ -161,7 +167,7 @@ class BoxRefinementNetwork:
 			posIndices = tf.cast(tf.where(tf.logical_and(classes > 0, scores>scoreThreshold)), tf.int32)
 
 			positives, scores, classes = MultiGather.gather([proposals, scores, classes], posIndices)
-			positives = self.refineBoxes(positives)[0]
+			positives = self.refineBoxes(positives, False)
 
 			#Final NMS
 			posIndices = tf.image.non_max_suppression(positives, scores, iou_threshold=nmsThreshold, max_output_size=maxOutputs)
