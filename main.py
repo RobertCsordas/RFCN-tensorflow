@@ -40,6 +40,7 @@ parser.add_argument('-mergeValidationSet', type=int, default=1, help='Merge vali
 parser.add_argument('-profile', type=int, default=0, help='Enable profiling', save=False)
 parser.add_argument('-randZoom', type=int, default=1, help='Enable box aware random zooming and cropping')
 parser.add_argument('-freezeBatchNorm', type=int, default=1, help='Freeze batch normalization during finetuning.')
+parser.add_argument('-export', type=str, help='Export model here.')
 
 opt=parser.parse_args()
 
@@ -71,7 +72,9 @@ from BoxInceptionResnet import *
 from Dataset import Augment
 from Visualize import VisualizeOutput
 from Utils import Model
+from Utils import Export
 from tensorflow.python.client import timeline
+import re
 
 globalStep = tf.Variable(0, name='globalStep', trainable=False)
 globalStepInc=tf.assign_add(globalStep,1)
@@ -131,6 +134,10 @@ with tf.Session(config=tf.ConfigProto(intra_op_parallelism_threads=8)) as sess:
 		net.importWeights(sess, "./inception_resnet_v2_2016_08_30.ckpt")
 		#net.importWeights(sess, "initialWeights/", permutateRgb=False)
 		print("Done.")
+
+	if opt.export is not None:
+		Export.exportModel(sess, opt.export, [lambda name: not re.match("^[Aa]dam(_.*)?$",name.split("/")[-1])])
+		sys.exit(-1)
 
 	dataset.startThreads(sess)
 
