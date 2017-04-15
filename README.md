@@ -15,6 +15,15 @@ You can run trained models with test.py. Model path should be given without file
 
 ![preview](https://cloud.githubusercontent.com/assets/2706617/25061919/2003e832-21c1-11e7-9397-14224d39dbe9.jpg)
 
+Pretrained model
+----------------
+
+You can download a pretrained model from here:
+http://xdever.engineerjs.com/rfcn-tensorflow-export.tar.bz2
+
+Extract it to your project directory. Then you can run the network with the following command:
+./test.py -n export/model -i \<input image\> -o \<output image\>
+
 License
 -------
 
