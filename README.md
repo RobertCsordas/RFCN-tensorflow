@@ -13,7 +13,7 @@ Testing
 
 You can run trained models with test.py. Model path should be given without file extension (without .data* and .index). An example:
 
-![preview](https://cloud.githubusercontent.com/assets/2706617/23438600/d7d79e86-fe12-11e6-9fec-ecdb15ba8806.jpg)
+![preview](https://cloud.githubusercontent.com/assets/2706617/25061919/2003e832-21c1-11e7-9397-14224d39dbe9.jpg)
 
 License
 -------
