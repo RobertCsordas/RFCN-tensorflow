@@ -19,9 +19,11 @@ Pretrained model
 ----------------
 
 You can download a pretrained model from here:
+
 http://xdever.engineerjs.com/rfcn-tensorflow-export.tar.bz2
 
 Extract it to your project directory. Then you can run the network with the following command:
+
 ./test.py -n export/model -i \<input image\> -o \<output image\>
 
 License
