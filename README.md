@@ -35,7 +35,7 @@ Training the network
 
 For training the network you will first need to download the MS COCO dataset. Download the needed files and extract them to a directory with the following structure:
 ```
-some root directory, from now on \<COCO\>
+<COCO>
 ├─  annotations
 │    ├─  instances_train2014.json
 │    └─  ...
@@ -51,7 +51,7 @@ Run the following command:
 
 The \<savedir\> will have the following structure:
 ```
-\<savedir\>
+<savedir>
 ├─  preview
 │    └─  preview.jpg - preview snapshots from training process.
 |
