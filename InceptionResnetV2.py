@@ -104,30 +104,29 @@ class InceptionResnetV2:
 				weights_regularizer=slim.l2_regularizer(weightDecay),
 				biases_regularizer=slim.l2_regularizer(weightDecay))
 
-		trainBnEntered = False
+		nonlocalTemp = {
+			"trainBnEntered" : False,
+			"currBlock": ""
+		}
 
-		currBlock = ""
 		def beginBlock(name):
-			nonlocal trainBnEntered
-			nonlocal currBlock
-
-			currBlock = name
-			if (trainFrom is not None) and (not trainBnEntered) and (trainFrom==name or trainFrom=="start"):
+			nonlocalTemp["currBlock"] = name
+			if (trainFrom is not None) and (not nonlocalTemp["trainBnEntered"]) and (trainFrom==name or trainFrom=="start"):
 				print("Enabling training on "+trainFrom)
 				if not freezeBatchNorm:
 					trainBatchNormScope.__enter__()
 				weightDecayScope.__enter__()
-				trainBnEntered=True
+				nonlocalTemp["trainBnEntered"]=True
 
 		def endBlock(net, scope=True, name=None):
 			if name is None:
-				name = currBlock
+				name = nonlocalTemp["currBlock"]
 			end_points[name]=net
 			if scope:
 				scopes.append(name)
 		
 		def endAll():
-			if trainBnEntered:
+			if nonlocalTemp["trainBnEntered"]:
 				if not freezeBatchNorm:
 					trainBatchNormScope.__exit__(None, None, None)
 				weightDecayScope.__exit__(None,None,None)

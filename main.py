@@ -136,7 +136,7 @@ with tf.Session(config=tf.ConfigProto(intra_op_parallelism_threads=8)) as sess:
 		print("Done.")
 
 	if opt.export is not None:
-		Export.exportModel(sess, opt.export, [lambda name: not re.match("^[Aa]dam(_.*)?$",name.split("/")[-1])])
+		Export.exportModel(sess, opt.export, [lambda name: name.split("/")[0]=="boxnet" and not re.match("^[Aa]dam(_.*)?$",name.split("/")[-1])])
 		sys.exit(-1)
 
 	dataset.startThreads(sess)

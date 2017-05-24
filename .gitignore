@@ -5,4 +5,5 @@ cache
 save
 *.png
 *.ckpt
+*.pyc
 timeline.json
