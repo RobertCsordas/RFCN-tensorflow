@@ -17,7 +17,6 @@
 # ==============================================================================
 
 
-
 from Utils.ArgSave import *
 import sys
 import os
@@ -40,7 +39,7 @@ parser.add_argument('-mergeValidationSet', type=int, default=1, help='Merge vali
 parser.add_argument('-profile', type=int, default=0, help='Enable profiling', save=False)
 parser.add_argument('-randZoom', type=int, default=1, help='Enable box aware random zooming and cropping')
 parser.add_argument('-freezeBatchNorm', type=int, default=1, help='Freeze batch normalization during finetuning.')
-parser.add_argument('-export', type=str, help='Export model here.')
+parser.add_argument('-export', type=str, help='Export model here.', save=False)
 
 opt=parser.parse_args()
 

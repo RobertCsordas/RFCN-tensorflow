@@ -14,7 +14,7 @@
 #
 # ==============================================================================
 
-from Visualize import Visualize
+from . import Visualize
 import threading
 import cv2
 

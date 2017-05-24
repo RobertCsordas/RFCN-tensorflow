@@ -1,4 +1,5 @@
-TF_INC := $(shell python -c 'import tensorflow as tf; print(tf.sysconfig.get_include())')
+PYTHON?=$(shell which python)
+TF_INC := $(shell ${PYTHON} -c 'import tensorflow as tf; print(tf.sysconfig.get_include())')
 
 all: roi_pooling.so
 
@@ -20,5 +21,5 @@ roi_pooling.so: roi_pooling.o roi_pooling_grad.o roi_pooling.cu.o roi_pooling_gr
 
 
 clean:
-	rm *.so
-	rm *.o
+	-rm *.so
+	-rm *.o

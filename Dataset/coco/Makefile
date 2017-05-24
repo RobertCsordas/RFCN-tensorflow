@@ -1,11 +1,12 @@
+PYTHON?=$(shell which python)
 all:
     # install pycocotools locally
-	python setup.py build_ext --inplace
+	${PYTHON} setup.py build_ext --inplace
 	rm -rf build
 
 install:
 	# install pycocotools to the Python site-packages
-	python setup.py build_ext install
+	${PYTHON} setup.py build_ext install
 	rm -rf build
 
 clean:

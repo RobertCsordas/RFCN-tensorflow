@@ -14,12 +14,12 @@
 #
 # ==============================================================================
 
-import Dataset.coco.pycocotools.coco as coco
+from .coco.pycocotools import coco
 import random
 import numpy as np
 import cv2
 import tensorflow as tf
-from Dataset import BoxAwareRandZoom
+from . import BoxAwareRandZoom
 
 class CocoDataset:
 	def __init__(self, path, set="train", normalizeSize=True, randomZoom=True):
