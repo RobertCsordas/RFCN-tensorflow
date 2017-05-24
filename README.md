@@ -8,6 +8,8 @@ Building
 
 The ROI pooling and the MS COCO loader needs to be compiled first. To do so, run make in the root directory of the project. You may need to edit *BoxEngine/ROIPooling/Makefile* if you need special linker/compiler options.
 
+*NOTE:* If you have multiple python versions on your system, and you want to use a different one than "python", provide an environment variable called PYTHON before calling make. For example: PYTHON=python3 make
+
 Testing
 -------
 
@@ -26,6 +28,45 @@ Extract it to your project directory. Then you can run the network with the foll
 
 ./test.py -n export/model -i \<input image\> -o \<output image\>
 
+*NOTE:* this pretrained model was not hyperparameter-optimized in any way. The model can (and will) have much better performance when optimized. Try out different learning rates and classification to regression loss balances. Optimal values are highly test dependent.
+
+Training the network
+--------------------
+
+For training the network you will first need to download the MS COCO dataset. Download the needed files and extract them to a directory with the following structure:
+```
+some root directory, from now on \<COCO\>
+├─  annotations
+│    ├─  instances_train2014.json
+│    └─  ...
+|
+├─  train2014
+└─  ...
+
+```
+Run the following command:
+./main.py -dataset \<COCO\> -name \<savedir\>
+* \<COCO\> - full path to the coco root directory
+* \<savedir\> - path where files will be saved. This directory and its subdirectories will be automatically created.
+
+The \<savedir\> will have the following structure:
+```
+\<savedir\>
+├─  preview
+│    └─  preview.jpg - preview snapshots from training process.
+|
+├─  save - TensorFlow checkpoint directory
+│    ├─  checkpoint
+│    ├─  model_*.*
+│    └─  ...
+└─  args.json - saved command line arguments.
+
+```
+
+You can always kill the training process and resume it later just by running
+./main.py -name \<savedir\>
+without any other parameters. All command line parameters will be saved and reloaded automatically.
+
 License
 -------
 
@@ -34,4 +75,4 @@ The software is under Apache 2.0 license. See http://www.apache.org/licenses/LIC
 Notes
 -----
 
-This code requires TensorFlow 1.0.
+This code requires TensorFlow >=1.0. Tested with python3.6, build it *should* work with python 2.
