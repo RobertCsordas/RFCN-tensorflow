@@ -102,7 +102,9 @@ void ComputePosRoiPooling(OpKernelContext* context, bool useGPU) {
     const int *raw_boxes = (int*) boxes.tensor_data().data();
 
     if (useGPU){
+        #if USE_GPU
         PosRoiPoolingGPUKernelLauncher(output, input, raw_boxes, n_boxes, roi_size, n_output_channels, image_width, image_height);
+        #endif
     } else {
         PosRoiPoolingCPU(output, input, raw_boxes, n_boxes, roi_size, n_output_channels, image_width, image_height);
     }
@@ -119,6 +121,7 @@ class PosRoiPoolingCpu : public OpKernel {
     }
 };
 
+#if USE_GPU
 class PosRoiPoolingGpu : public OpKernel {
     public:
     explicit PosRoiPoolingGpu(OpKernelConstruction* context) : OpKernel(context) { }
@@ -128,6 +131,7 @@ class PosRoiPoolingGpu : public OpKernel {
         ComputePosRoiPooling(context, true);
     }
 };
+#endif
 
 REGISTER_OP("PosRoiPooling")
     .Input("conv_features: float")

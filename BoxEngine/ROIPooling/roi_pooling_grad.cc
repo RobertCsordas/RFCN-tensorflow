@@ -108,7 +108,9 @@ void ComputePosRoiPoolingGrad(OpKernelContext* context, bool useGPU) {
     const int *raw_boxes = (int*) boxes.tensor_data().data();
 
     if (useGPU){
+        #if USE_GPU
         PosRoiPoolingGradGPUKernelLauncher(output, grads, raw_boxes, n_boxes, roi_size, n_output_channels, image_width, image_height);
+        #endif
     } else {
         PosRoiPoolingCPUGrad(output, grads, raw_boxes, n_boxes, roi_size, n_output_channels, image_width, image_height);
     }
@@ -124,6 +126,7 @@ class PosRoiPoolingCpuGrad : public OpKernel {
     }
 };
 
+#if USE_GPU
 class PosRoiPoolingGpuGrad : public OpKernel {
     public:
     explicit PosRoiPoolingGpuGrad(OpKernelConstruction* context) : OpKernel(context) { }
@@ -132,6 +135,7 @@ class PosRoiPoolingGpuGrad : public OpKernel {
         ComputePosRoiPoolingGrad(context, true);
     }
 };
+#endif
 
 REGISTER_OP("PosRoiPoolingGrad")
     .Input("grads: float")
