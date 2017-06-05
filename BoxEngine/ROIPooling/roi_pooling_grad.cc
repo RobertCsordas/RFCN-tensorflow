@@ -142,4 +142,6 @@ REGISTER_OP("PosRoiPoolingGrad")
 
 
 REGISTER_KERNEL_BUILDER(Name("PosRoiPoolingGrad").Device(DEVICE_CPU), PosRoiPoolingCpuGrad);
+#if USE_GPU
 REGISTER_KERNEL_BUILDER(Name("PosRoiPoolingGrad").Device(DEVICE_GPU).HostMemory("roi_size").HostMemory("input_shape"), PosRoiPoolingGpuGrad);
+#endif

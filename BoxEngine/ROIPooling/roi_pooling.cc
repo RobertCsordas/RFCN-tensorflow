@@ -136,4 +136,6 @@ REGISTER_OP("PosRoiPooling")
     .Output("output_tensor: float");
 
 REGISTER_KERNEL_BUILDER(Name("PosRoiPooling").Device(DEVICE_CPU), PosRoiPoolingCpu);
+#if USE_GPU
 REGISTER_KERNEL_BUILDER(Name("PosRoiPooling").Device(DEVICE_GPU).HostMemory("roi_size"), PosRoiPoolingGpu);
+#endif
