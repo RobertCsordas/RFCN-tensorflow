@@ -10,6 +10,10 @@ The ROI pooling and the MS COCO loader needs to be compiled first. To do so, run
 
 *NOTE:* If you have multiple python versions on your system, and you want to use a different one than "python", provide an environment variable called PYTHON before calling make. For example: PYTHON=python3 make
 
+You may have undefined symbol problems while trying to load the .so file. This will be the problem if you built your TensorFlow version yourself. You may find errors like "tensorflow.python.framework.errors_impl.NotFoundError: BoxEngine/ROIPooling/roi_pooling.so: undefined symbol: \_ZN10tensorflow7strings6StrCatB5cxx11ERKNS0_8AlphaNumE" in the log. In this case clean the project (make clean) and rebuild it with USE_OLD_EABI=0 flag (USE_OLD_EABI=0 make).
+
+You may want to build ROI pooling without GPU support. Use the USE_GPU=0 flag to turn off the CUDA part of the code.
+
 Testing
 -------
 
