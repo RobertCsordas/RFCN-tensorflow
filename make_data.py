@@ -61,8 +61,8 @@ if not os.path.exists(save_path_annotation):
 if not os.path.exists(save_path_val):
     os.makedirs(save_path_val)
 
-image_height = 2591
-image_width = 1447
+image_height = 1447
+image_width = 2591
 ann = tf.placeholder(tf.int32,shape=[None,None],name="ora_im")
 oracle = tf.placeholder(
             tf.float32, shape=[None, None, 3],
@@ -74,15 +74,15 @@ mask = tf.equal(ann, n)
 sess = tf.Session()
 
 print("got here_1")
-num_train = 0
-num_val = 0
+num_train = -1
+num_val = -1
 idd_Annot_train = 0
 idd_Annot_val = 0
 
 files = sorted(os.listdir(data_path))
 print("Found",len(files),"files ! ")
 
-for fc in files:
+for file in files:
     if num_val == num_2:
         if num_train == num_1:
             print(
@@ -94,19 +94,9 @@ for fc in files:
                 f.write(json.dumps(json_data_val, ensure_ascii=False))
             print("JSON val svaed sucessfully")
             break
-        if fc[]
-        if fc[-12:] == 'oracle_2.png':
-            output = "Moving training Images : {}".format(num_train)
-            sys.stdout.write("\r\x1b[K" + output)
-            sys.stdout.flush()
-            img = misc.imread(data_path+fc,mode="RGB")
-            img = misc.imresize(img,[image_height,image_width])
-            #scene = misc.imread(data_path+fc[:-10]+"scene.png",mode="RGB")
-            ora = sess.run(pred,feed_dict={oracle:img})
-            if len(np.unique(ora)) <= 2:
-                num_train+=1
-                continue
-            shutil.copy(data_path+fc[:-12]+"scene_1.png", save_path_train +
+        if file.split('.')[1] == 'jpg':
+            num_train += 1
+            shutil.copy(os.path.join(data_path,file), save_path_train +
                             "image_" + str(num_train)+'.png')
             json_data_train["images"].append(
                         {
@@ -116,21 +106,27 @@ for fc in files:
                             u"height" : image_height
                         }
                     )
-            for d in range(4):
-                kk = sess.run(mask,feed_dict = {ann:ora,n:d})
-                cont = add_bounding_box(kk)
-                for z in range(len(cont)):
-                    json_data_train["annotations"].append(
-                                    {
-                                        u"id": idd_Annot_train,
-                                        u"category_id": d+1,
-                                        u"image_id" : num_train,
-                                        u"bbox" : cont[z],
-                                        u"iscrowd" : 0
-                                    }
-                                )
+            output = "Moving training Images : {}".format(num_train)
+            sys.stdout.write("\r\x1b[K" + output)
+            sys.stdout.flush()
+        else :
+            img = misc.imread(os.path.join(data_path,file),mode="RGB")
+            img = misc.imresize(img,[image_height,image_width])
+            ora = sess.run(pred,feed_dict={oracle:img})
+
+            kk = sess.run(mask,feed_dict = {ann:ora,n:1})
+            cont = add_bounding_box(kk)
+            for z in range(len(cont)):
+                json_data_train["annotations"].append(
+                                {
+                                    u"id": idd_Annot_train,
+                                    u"category_id": 1,
+                                    u"image_id" : num_train,
+                                    u"bbox" : cont[z],
+                                    u"iscrowd" : 0
+                                }
+                            )
                     idd_Annot_train+=1
-            num_train+=1
 
     else:
         if fc[-12:] == 'oracle_2.png':
@@ -161,7 +157,7 @@ for fc in files:
                     json_data_val["annotations"].append(
                                     {
                                         u"id": idd_Annot_val,
-                                        u"category_id": d+1,
+                                        u"category_id": 1,
                                         u"image_id" : num_val,
                                         u"bbox" : cont[z],
                                         u"iscrowd" : 0
