@@ -15,7 +15,7 @@ except:
     exit()
 
 
-colors_array = np.array([255, 0, 0])
+colors_array = np.array([[0,0,0],[255, 0, 0]])
 
 json_data_train = {
     u"categories" :[
@@ -50,9 +50,9 @@ def add_bounding_box(im):
 
 data_path = "/media/sterblue/generated_pylone_image_no_change_new_2/"
 
-save_path_train = os.path.abspath("RFCN-tensorflow/pylone/train2014/")
-save_path_val = os.path.abspath("RFCN-tensorflow/pylone/val2014/")
-save_path_annotation = os.path.abspath("RFCN-tensorflow/pylone/annotations/")
+save_path_train = os.path.abspath("RFCN-tensorflow/data/train2014/")
+save_path_val = os.path.abspath("RFCN-tensorflow/data/val2014/")
+save_path_annotation = os.path.abspath("RFCN-tensorflow/data/annotations/")
 
 if not os.path.exists(save_path_train):
     os.makedirs(save_path_train)
@@ -78,7 +78,7 @@ num_train = 0
 num_val = 0
 idd_Annot_train = 0
 idd_Annot_val = 0
-print(len(os.listdir(data_path)))
+print("Found",len(os.listdir(data_path)),"files ! ")
 files = sorted(os.listdir(data_path))
 for fc in files:
     if num_val == num_2:
