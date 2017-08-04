@@ -78,8 +78,10 @@ num_train = 0
 num_val = 0
 idd_Annot_train = 0
 idd_Annot_val = 0
-print("Found",len(os.listdir(data_path)),"files ! ")
+
 files = sorted(os.listdir(data_path))
+print("Found",len(files),"files ! ")
+
 for fc in files:
     if num_val == num_2:
         if num_train == num_1:
