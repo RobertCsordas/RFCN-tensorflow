@@ -49,7 +49,7 @@ def mirror(image, boxes):
 		return image, tf.stack([x0_m,y0,x1_m,y1], axis=1)
 			
 	uniform_random = tf.random_uniform([], 0, 1.0)
-	return tf.cond(uniform_random < 0.5, lambda: tf.tuple([image, boxes]), lambda: doMirror(image, boxes))
+	return tf.cond(uniform_random < 0.5, lambda: (image, boxes), lambda: doMirror(image, boxes))
 
 def augment(image, boxes, classes):
 	with tf.name_scope('augmentation') as scope:

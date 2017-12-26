@@ -1,5 +1,6 @@
 tags
 .vscode
+.idea
 __pycache__
 cache
 save

@@ -40,6 +40,7 @@ parser.add_argument('-profile', type=int, default=0, help='Enable profiling', sa
 parser.add_argument('-randZoom', type=int, default=1, help='Enable box aware random zooming and cropping')
 parser.add_argument('-freezeBatchNorm', type=int, default=1, help='Freeze batch normalization during finetuning.')
 parser.add_argument('-export', type=str, help='Export model here.', save=False)
+parser.add_argument('-cocoVariant', type=str, default="2014", help='Coco variant to load. 2014 or 2017')
 
 opt=parser.parse_args()
 
@@ -81,9 +82,9 @@ globalStepInc=tf.assign_add(globalStep,1)
 Model.download()
 
 dataset = BoxLoader()
-dataset.add(CocoDataset(opt.dataset, randomZoom=opt.randZoom==1))
+dataset.add(CocoDataset(opt.dataset, randomZoom=opt.randZoom==1, set="train"+opt.cocoVariant))
 if opt.mergeValidationSet==1:
-	dataset.add(CocoDataset(opt.dataset, set="val"))
+	dataset.add(CocoDataset(opt.dataset, set="val"+opt.cocoVariant))
 
 
 images, boxes, classes = Augment.augment(*dataset.get())
@@ -94,13 +95,13 @@ print(dataset.getCaptionMap())
 
 
 net = BoxInceptionResnet(images, dataset.categoryCount(), name="boxnet", trainFrom=opt.trainFrom, hardMining=opt.hardMining==1, freezeBatchNorm=opt.freezeBatchNorm==1)
-slim.losses.add_loss(net.getLoss(boxes, classes))
+tf.losses.add_loss(net.getLoss(boxes, classes))
 
 def createUpdateOp(gradClip=1):
 	with tf.name_scope("optimizer"):
 		optimizer=tf.train.AdamOptimizer(learning_rate=opt.learningRate, epsilon=opt.adamEps)
 		update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
-		totalLoss = slim.losses.get_total_loss()
+		totalLoss = tf.losses.get_total_loss()
 		grads = optimizer.compute_gradients(totalLoss, var_list=net.getVariables())
 		if gradClip is not None:
 			cGrads = []

@@ -1,42 +1,35 @@
+CUDA_HOME?=$(shell dirname `dirname \`which nvcc\``)
+CUDA_INC := ${CUDA_HOME}/include
+NVCC := ${CUDA_HOME}/bin/nvcc
+ARCH?=sm_37
+CXXFLAGS:=-std=c++11 -O2 -D GOOGLE_CUDA=1
 PYTHON?=$(shell which python)
-TF_INC := $(shell ${PYTHON} -c 'import tensorflow as tf; print(tf.sysconfig.get_include())')
-USE_OLD_EABI?=1
-USE_GPU?=1
-
+TF_INC?=$(shell ${PYTHON} -c 'import tensorflow as tf; print(tf.sysconfig.get_include())')
+TF_INCLUDE=-I ${TF_INC} -I ${TF_INC}/external/nsync/public
+TF_LDFLAGS?=$(shell ${PYTHON} -c 'import tensorflow as tf; v=[int(a) for a in tf.__version__.split(".")[:2]]; new_tf=v[0]>1 or (v[0]==1 and v[1]>=4); print("-L "+tf.sysconfig.get_lib()+" -ltensorflow_framework" if new_tf else "")')
+USE_OLD_EABI?=$(shell ${PYTHON} -c 'import tensorflow as tf; print((1-tf.__cxx11_abi_flag__) if hasattr(tf,"__cxx11_abi_flag__") else int(int(tf.__compiler_version__[0])<6))')
 ifeq (${USE_OLD_EABI}, 1)
-	EABIFLAGS=-D_GLIBCXX_USE_CXX11_ABI=0
-else
-	EABIFLAGS=
+	CXXFLAGS += -D_GLIBCXX_USE_CXX11_ABI=0
 endif
-
-ifeq (${USE_GPU}, 1)
-	LINKDEPS=roi_pooling.o roi_pooling_grad.o roi_pooling.cu.o roi_pooling_grad.cu.o
-	GPUFLAGS=-DUSE_GPU=1
-else
-	GPUFLAGS=-DUSE_GPU=0
-	LINKDEPS=roi_pooling.o roi_pooling_grad.o
-endif
+LIB=-L ${CUDA_HOME}/targets/x86_64-linux/lib -L ${CUDA_HOME}/lib64/ -L ${CUDA_HOME}/extras/CUPTI/lib64/ -lcudart ${TF_LDFLAGS}
 
 all: roi_pooling.so
 
 roi_pooling_grad.o: roi_pooling_grad.cc
-	g++ -std=c++11 ${EABIFLAGS} ${GPUFLAGS} -c -o roi_pooling_grad.o roi_pooling_grad.cc -I $(TF_INC) -fPIC -O2
+	${CXX} ${CXXFLAGS} -c -o roi_pooling_grad.o roi_pooling_grad.cc ${TF_INCLUDE} -I ${CUDA_INC} -fPIC -O2
 
 roi_pooling.o: roi_pooling.cc
-	g++ -std=c++11 ${EABIFLAGS} ${GPUFLAGS} -c -o roi_pooling.o roi_pooling.cc -I $(TF_INC) -fPIC -O2
+	${CXX}  ${CXXFLAGS} -c -o roi_pooling.o roi_pooling.cc ${TF_INCLUDE} -I ${CUDA_INC} -fPIC -O2
 
 roi_pooling.cu.o: roi_pooling.cu.cc
-	nvcc -std=c++11 -c -o roi_pooling.cu.o roi_pooling.cu.cc -I $TF_INC -D GOOGLE_CUDA=1 -x cu -Xcompiler -fPIC
+	${NVCC} -std=c++11 -c -o roi_pooling.cu.o roi_pooling.cu.cc ${TF_INCLUDE} -I ${CUDA_INC} -D GOOGLE_CUDA=1 -x cu -Xcompiler -fPIC -arch=${ARCH} -use_fast_math
 
 roi_pooling_grad.cu.o: roi_pooling_grad.cu.cc
-	nvcc -std=c++11 -c -o roi_pooling_grad.cu.o roi_pooling_grad.cu.cc -I $TF_INC -D GOOGLE_CUDA=1 -x cu -Xcompiler -fPIC
-
-roi_pooling.so: ${LINKDEPS}
-	g++ -std=c++11 ${EABIFLAGS} -shared -o roi_pooling.so ${LINKDEPS} -I $(TF_INC) -fPIC -O2
+	${NVCC} -std=c++11 -c -o roi_pooling_grad.cu.o roi_pooling_grad.cu.cc ${TF_INCLUDE} -I ${CUDA_INC} -D GOOGLE_CUDA=1 -x cu -Xcompiler -fPIC -arch=${ARCH} -use_fast_math
 
 
-#roi_pooling.so: roi_pooling.o roi_pooling_grad.o roi_pooling.cu.o roi_pooling_grad.cu.o
-#	g++ -std=c++11  -D_GLIBCXX_USE_CXX11_ABI=0 -shared -o roi_pooling.so roi_pooling.o roi_pooling_grad.o roi_pooling.cu.o roi_pooling_grad.cu.o -I $(TF_INC) -fPIC -O2
+roi_pooling.so: roi_pooling.o roi_pooling_grad.o roi_pooling.cu.o roi_pooling_grad.cu.o
+	${CXX}  ${CXXFLAGS} -shared -o roi_pooling.so roi_pooling.o roi_pooling_grad.o roi_pooling.cu.o roi_pooling_grad.cu.o ${TF_INCLUDE} -I ${CUDA_INC} -fPIC -O2 ${LIB}
 
 
 clean:

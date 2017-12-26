@@ -22,7 +22,7 @@ import tensorflow as tf
 from . import BoxAwareRandZoom
 
 class CocoDataset:
-	def __init__(self, path, set="train", normalizeSize=True, randomZoom=True):
+	def __init__(self, path, set="train2017", normalizeSize=True, randomZoom=True):
 		print(path)
 		self.path=path
 		self.coco=None
@@ -31,7 +31,7 @@ class CocoDataset:
 		self.randomZoom=randomZoom
 
 	def init(self):
-		self.coco=coco.COCO(self.path+"/annotations/instances_"+self.set+"2014.json")
+		self.coco=coco.COCO(self.path+"/annotations/instances_"+self.set+".json")
 		self.images=self.coco.getImgIds()
 
 		self.toCocoCategory=[]
@@ -71,7 +71,7 @@ class CocoDataset:
 			if len(crowd)>0:
 				continue;
 
-			imgFile=self.path+"/"+self.set+"2014/"+self.coco.loadImgs(imgId)[0]["file_name"]
+			imgFile=self.path+"/"+self.set+"/"+self.coco.loadImgs(imgId)[0]["file_name"]
 			img = cv2.imread(imgFile)
 
 			if img is None:

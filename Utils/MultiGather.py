@@ -27,7 +27,7 @@ def gatherTopK(t, k, others=[], sorted=False):
     res=[]
     with tf.name_scope("gather_top_k"):
         isMoreThanK = tf.shape(t)[-1]>k
-        values, indices = tf.cond(isMoreThanK, lambda: tf.nn.top_k(t, k=k, sorted=sorted), lambda: tf.tuple([t, tf.zeros((0,1), tf.int32)]))
+        values, indices = tf.cond(isMoreThanK, lambda: tuple(tf.nn.top_k(t, k=k, sorted=sorted)), lambda: (t, tf.zeros((0,1), tf.int32)))
         indices = tf.reshape(indices, [-1,1])
         res.append(values)
 
