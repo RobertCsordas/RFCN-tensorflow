@@ -24,13 +24,20 @@ from BoxEngine.BoxNetwork import BoxNetwork
 
 
 class BoxInceptionResnet(BoxNetwork):
+	LAYER_NAMES = ['Conv2d_1a_3x3','Conv2d_2a_3x3','Conv2d_2b_3x3','MaxPool_3a_3x3','Conv2d_3b_1x1','Conv2d_4a_3x3',
+			  'MaxPool_5a_3x3','Mixed_5b','Repeat','Mixed_6a','Repeat_1','Mixed_7a','Repeat_2','Block8','Conv2d_7b_1x1']
+
 	def __init__(self, inputs, nCategories, name="BoxNetwork", weightDecay=0.00004, freezeBatchNorm=False, reuse=False, isTraining=True, trainFrom=None, hardMining=True):
 		self.boxThreshold = 0.5
 
-		if trainFrom == "0":
-			trainFrom = "Conv2d_1a_3x3"
-		elif trainFrom == "-1":
-			trainFrom = None
+		try:
+			trainFrom = int(trainFrom)
+		except:
+			pass
+
+		if isinstance(trainFrom, int):
+			trainFrom = self.LAYER_NAMES[trainFrom]
+
 
 		print("Training network from "+(trainFrom if trainFrom is not None else "end"))
 
